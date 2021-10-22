@@ -2,9 +2,11 @@
 #include <ctype.h>
 
 #define __RELEASE__
+
 #define PUTS_AND_RETURN(arg) {puts(arg); return -1;}
 #define BYTE unsigned char
-#define LL long long
+#define LLADRESS long long
+#define READSIZE int
 
 int main(const int argc, const char* argv[])
 {
@@ -32,7 +34,7 @@ int main(const int argc, const char* argv[])
 		}
 	}
 	else
-		failed:
+failed:
 	PUTS_AND_RETURN("参数错误！");
 
 	const char* FilePath = argv[1];
@@ -45,46 +47,52 @@ int main(const int argc, const char* argv[])
 	if (!ReadFile)
 		PUTS_AND_RETURN("文件打开失败！");
 
+#ifndef __RELEASE__
+	while (!feof(ReadFile))
+		printf("%d ", fread(Save, 1, 16, ReadFile));
+	putchar('\n');
+#endif
+
+
 	//变量声明
-	LL FilePointerAddress = 0;
+	LLADRESS FilePointerAddress = 0;
+	READSIZE r = 0;
 	BYTE Save[16] = { 0 };
-	BYTE* p = NULL, * p2 = NULL;
+	BYTE* p = NULL, * SaveAddp = NULL;
+
 
 	//循环直到文件结尾
 	while (!feof(ReadFile))
 	{
-		for (p = Save; !feof(ReadFile) && (p < Save + 16); p += 1)//读取16个字符
-			*p = fgetc(ReadFile);
+		if (!(r = fread(Save, 1, 16, ReadFile)))//读取16个字符
+			break;
+		SaveAddp = Save + r;
 
 		printf("%08llx  ", FilePointerAddress);//输出第一个字符的地址
 		FilePointerAddress += 16;
 
-		if (p > Save + 8)
+
+		if (r > 8)
 		{
-			for (p2 = Save; p2 < Save + 8; p2 += 1)//十六进制格式输出
-				printf("%02X ", *p2);
-			putchar(' ');
-			for (p2 = Save + 8; p2 < p; p2 += 1)//十六进制格式输出
-				printf("%02X ", *p2);
+			for (p = Save; p < Save + 8; p += 1)//十六进制格式输出
+				printf("%02X ", *p);
+			putchar(' ');//分隔符
+			for (p = Save + 8; p < SaveAddp; p += 1)//十六进制格式输出
+				printf("%02X ", *p);
 		}
 		else
 		{
-			for (p2 = Save; p2 < p; p2 += 1)//十六进制格式输出
-				printf("%02X ", *p2);
-			putchar(' ');
+			for (p = Save; p < SaveAddp; p += 1)//十六进制格式输出
+				printf("%02X ", *p);
+			putchar(' ');//分隔符
 		}
 
-		for (unsigned m = 0; m < (Save + 16 - p) / sizeof(BYTE); m += 1)//对齐
+		for (int m = 0; m < 16 - r; m += 1)//对齐输出
 			printf("   ");
-		putchar(' ');
+		putchar(' ');//分隔符
 
-		for (p2 = Save; p2 < p; p2 += 1)//字符格式输出
-		{
-			if (isprint(*p2))
-				printf("%c", *p2);
-			else
-				putchar('.');
-		}
+		for (p = Save; p < SaveAddp; p += 1)//字符格式输出
+			printf("%c", (isprint(*p)) ? *p : '.');
 
 		putchar('\n');
 	}
